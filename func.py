@@ -4,6 +4,7 @@ from scipy.sparse import hstack, kron, eye, csr_matrix, block_diag
 import random
 from pymatching import Matching
 import networkx as nx
+import copy
 
 def planer_code_x_stabilisers(L):                               # planer codeのstabilizerを表す行列を生成
     row_ind = []
@@ -166,7 +167,7 @@ def contenious_loss_detecter(lossqubits, L, g_matching):
 
 
 #属性を検索する関数
-def find_specific_attribute_edge( G, attr, value):
+def find_specific_attribute_edge(G, attr, value):
     result = []
     d = nx.get_edge_attributes(G, attr)
     for key, v in d.items():
@@ -178,11 +179,14 @@ def find_specific_attribute_edge( G, attr, value):
 def find_specific_node_id(G, attr, id):
     result=None
     d = nx.get_node_attributes(G, attr)
-    for key, v in d.items():
+    for key, v in  d.items():
         if(id in v):
             result=key
+            break
         else:
             pass
+    if result:
+        print("find_specific_node_id could not find {0} on attribute {1}".format(id, attr))
     return result
 
 def erasure_error(g_matching, error_prob={"erasure":0.0}):
@@ -198,15 +202,15 @@ def erasure_error(g_matching, error_prob={"erasure":0.0}):
         g_matching.edges[e]['erasure'] = False
     erasure_edges = []
     for id in erasure_errors:
-        temp=find_specific_attribute_edge(g_matching, "fault_ids", id)
+        temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
         erasure_edges.extend(temp)
     for e in erasure_edges:
         pass     
         
     return g_matching
 
-def Multigraph_creater(g, error_prob={"erasure":0.5},): # g:multi graphのmatching_graph
-    g_matching = g.copy()
+def Multigraph_creater(g, error_prob={"erasure":0.5}): # g:multi graphのmatching_graph
+    g_matching = copy.deepcopy(g)
     num_eerror = np.random.binomial(g_matching.number_of_edges(), error_prob["erasure"], 1)
 
     # エラーの起きるedgeの選択
@@ -221,13 +225,16 @@ def Multigraph_creater(g, error_prob={"erasure":0.5},): # g:multi graphのmatchi
 
     erasure_edges = []
     for id in erasure_errors:
-        temp=find_specific_attribute_edge(g_matching, "fault_ids", id)
+        temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
         erasure_edges.extend(temp)
+
+    print("erasure_edges",erasure_edges)
 
     # 消失したedgeに関するnodeを統合
     for e0 in erasure_edges:
         node_id0=find_specific_node_id(g_matching, 'node_ids', e0[0])
         node_id1=find_specific_node_id(g_matching, 'node_ids', e0[1])
+        print("node_id:", node_id0, node_id1)
         if node_id0 !=node_id1:
             new_node_ids = g_matching.nodes[node_id0]['node_ids']
             new_node_ids.extend(g_matching.nodes[node_id1]['node_ids'])
@@ -237,7 +244,7 @@ def Multigraph_creater(g, error_prob={"erasure":0.5},): # g:multi graphのmatchi
             g_matching.nodes[node_id0]['pos'] = new_pos
 
             for e1 in g_matching.edges(node_id1, keys=True):
-                print(e1)
+                print("e1:",e1)
                 if node_id0!=e1[1]:
                     g_matching.add_edge(node_id0, e1[1], **g_matching.edges[e1])
             g_matching.remove_node(node_id1)
@@ -247,8 +254,8 @@ def Multigraph_creater(g, error_prob={"erasure":0.5},): # g:multi graphのmatchi
 
 def get_edge_number(g_matching, L):
     multi_loss_edges = {}
-    for n in g_matching.nodes(L):
-        for m in range(n+1, L**2-L):
+    for n in g_matching.nodes():
+        for m in range(n+1, L*(L-1)):
             l = g_matching.number_of_edges(n, m)
             if l >1:
                 for node0 in g_matching.nodes[n]['node_ids']:
