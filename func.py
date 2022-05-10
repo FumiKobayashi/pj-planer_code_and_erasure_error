@@ -60,17 +60,18 @@ def planer_code_x_logicals(L):
     return csr_matrix(x_logicals)
 
 
-def num_decoding_failures(H,logicals, L, p, num_trials, ploss=0.0):
+def num_decoding_failures(H,logicals, L, p_comp, num_trials, ploss=0.0):
     num = np.array([i for i in range(L**2+(L-1)**2)])           # lossしたqubitを見つけるための数列
     num_errors = 0                                              # エラーカウンターの設定
     for i in range(num_trials):
-        flag_loss = np.random.binomial(2, ploss, L**2+(L-1)**2)
+        flag_loss = np.random.binomial(1, ploss, L**2+(L-1)**2)
         lossqubits = num  * flag_loss
         lossqubits = lossqubits[lossqubits.nonzero()]
         g_matching = multi_graph_generator(H, L)
 
-
-        spacelike_weights=[np.log((1-1e-300)/1e-300) if i in lossqubits else np.log((1-p)/p) for i in range(L**2+(L-1)**2)]
+        # weightの定義
+        spacelike_weights = weight_generator(g_matching, p_comp, L, lossqubits)
+        # spacelike_weights=[np.log((1-1e-300)/1e-300) if i in lossqubits else np.log((1-p_comp)/p_comp) for i in range(L**2+(L-1)**2)]
 
         matching = Matching(H, spacelike_weights=spacelike_weights) 
         noise = np.random.binomial(1, p, H.shape[1])            # nioseの生成
@@ -82,18 +83,21 @@ def num_decoding_failures(H,logicals, L, p, num_trials, ploss=0.0):
     return num_errors
 
 
-# def weight_generator(p, L, lossqubits=None):
-#     spacelike_weights = []
-#     for i in range(L**2+(L-1)**2):
-#         if i in lossqubits:
-#             spacelike_weights.append(np.log((1-1e-300)/1e-300))
-#         elif i in *** :
-#             n  = ***
-#             pn = (1-(1-2*p)**n)*0.5
-#             spacelike_weights.append(np.log((1-pn)/pn))
-#         else:
-#             spacelike_weights.append(np.log((1-p)/p))
-#     return spacelike_weights
+def weight_generator(g,p, L, lossqubits=None):
+    dict_loss_degraded_edges = dict_number_of_degraded_edges(g, L, lossqubits)
+    loss_edge_id_list = [ g.edges[k[0],k[1]]['fault_ids'] for k in dict_loss_degraded_edges.keys]
+    spacelike_weights = []
+    for i in range(L**2+(L-1)**2):
+        if i in lossqubits:
+            spacelike_weights.append(np.log((1-1e-300)/1e-300))
+        # elif i in *** :
+        #     n  = ***
+        #     pn = (1-(1-2*p)**n)*0.5
+        #     spacelike_weights.append(np.log((1-pn)/pn))
+        else:
+            spacelike_weights.append(np.log((1-p)/p))
+    return spacelike_weights
+
 
 def multi_graph_generator(H, L):
     matching = Matching(H)
@@ -148,22 +152,22 @@ def draw_matching_graph(self, edge_labels=True, ax = None):
     #=======================================
 
 
-def contenious_loss_detecter(lossqubits, L, g_matching):
-    superweight_qubits = []
-    already = []
-    n_dict = {}
-    for lossqubit in lossqubits:
-        if lossqubit < L**2:
-            if (lossqubit+1 in lossqubits) and (not (lossqubit+1 in already)):
-                already.append(lossqubit+1)
+# def contenious_loss_detecter(lossqubits, L, g_matching):
+#     superweight_qubits = []
+#     already = []
+#     n_dict = {}
+#     for lossqubit in lossqubits:
+#         if lossqubit < L**2:
+#             if (lossqubit+1 in lossqubits) and (not (lossqubit+1 in already)):
+#                 already.append(lossqubit+1)
                 
-            else:
-                pass
-        elif lossqubit > (L**2-1):
-            """ ここ作る """
-            pass
-        else:
-            print("There is some error in the contenious_loss_detecter.")
+#             else:
+#                 pass
+#         elif lossqubit > (L**2-1):
+#             """ ここ作る """
+#             pass
+#         else:
+#             print("There is some error in the contenious_loss_detecter.")
 
 
 #属性を検索する関数
@@ -185,7 +189,7 @@ def find_specific_node_id(G, attr, id):
             break
         else:
             pass
-    if result:
+    if result==None:
         print("find_specific_node_id could not find {0} on attribute {1}".format(id, attr))
     return result
 
@@ -209,15 +213,22 @@ def erasure_error(g_matching, error_prob={"erasure":0.0}):
         
     return g_matching
 
-def Multigraph_creater(g, error_prob={"erasure":0.5}): # g:multi graphのmatching_graph
+
+" matchingグラフのedgeに対する\"ダブり\"の数カウントを返す関数"
+def dict_number_of_degraded_edges(g, L, lossqubits):
+    return get_edge_number(Erasured_matching_graph_creater(g, lossqubits), L)
+
+
+#  以下は上の関数のための関数
+def Erasured_matching_graph_creater(g, lossqubits): # g:multi graphのmatching_graph
     g_matching = copy.deepcopy(g)
-    num_eerror = np.random.binomial(g_matching.number_of_edges(), error_prob["erasure"], 1)
 
     # エラーの起きるedgeの選択
-    erasure_errors = random.sample([i for i in range(g_matching.number_of_edges())], k=num_eerror[0])
+    erasure_errors = lossqubits
+
     print("erasure errors:",erasure_errors)
 
-    # edegeにエラー属性を付加
+    # edgeにエラー属性を付加
     for e in g_matching.edges(keys=True):
         g_matching.edges[e]['erasure'] = False
     for n in g_matching.nodes():
@@ -228,13 +239,12 @@ def Multigraph_creater(g, error_prob={"erasure":0.5}): # g:multi graphのmatchin
         temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
         erasure_edges.extend(temp)
 
-    print("erasure_edges",erasure_edges)
+    # print("erasure_edges",erasure_edges)
 
     # 消失したedgeに関するnodeを統合
     for e0 in erasure_edges:
         node_id0=find_specific_node_id(g_matching, 'node_ids', e0[0])
         node_id1=find_specific_node_id(g_matching, 'node_ids', e0[1])
-        print("node_id:", node_id0, node_id1)
         if node_id0 !=node_id1:
             new_node_ids = g_matching.nodes[node_id0]['node_ids']
             new_node_ids.extend(g_matching.nodes[node_id1]['node_ids'])
@@ -244,7 +254,6 @@ def Multigraph_creater(g, error_prob={"erasure":0.5}): # g:multi graphのmatchin
             g_matching.nodes[node_id0]['pos'] = new_pos
 
             for e1 in g_matching.edges(node_id1, keys=True):
-                print("e1:",e1)
                 if node_id0!=e1[1]:
                     g_matching.add_edge(node_id0, e1[1], **g_matching.edges[e1])
             g_matching.remove_node(node_id1)
@@ -260,8 +269,9 @@ def get_edge_number(g_matching, L):
             if l >1:
                 for node0 in g_matching.nodes[n]['node_ids']:
                     for node1 in g_matching.nodes[m]['node_ids']:
-                        if node0<node1:
+                        # if node0<node1:
                             multi_loss_edges[(node0, node1)]=l
-                        else:
-                            pass
+                        # else:
+                        #     pass
     return multi_loss_edges
+#########################################
