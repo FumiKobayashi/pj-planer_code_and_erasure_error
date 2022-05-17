@@ -70,7 +70,7 @@ def num_decoding_failures(H,logicals, L, p_comp, num_trials, ploss=0.0):
         g_matching = multi_graph_generator(H, L)
 
         # weightの定義
-        spacelike_weights = weight_generator(g_matching, p_comp, L, lossqubits)
+        spacelike_weights = spacelike_weight_generator(g_matching, p_comp, L, lossqubits)
         # spacelike_weights=[np.log((1-1e-300)/1e-300) if i in lossqubits else np.log((1-p_comp)/p_comp) for i in range(L**2+(L-1)**2)]
 
         matching = Matching(H, spacelike_weights=spacelike_weights) 
@@ -83,7 +83,7 @@ def num_decoding_failures(H,logicals, L, p_comp, num_trials, ploss=0.0):
     return num_errors
 
 
-def weight_generator(graph_matching, p, L, lossqubits=None):
+def spacelike_weight_generator(graph_matching, p, L, lossqubits=None):
     graph_degraded_matching =  Erasured_matching_graph_creater(graph_matching, L,lossqubits)
     graph_matching = add_degrade_attribute(graph_matching, graph_degraded_matching, L, lossqubits)
     spacelike_weights = []
@@ -240,7 +240,7 @@ def Erasured_matching_graph_creater(g, L, lossqubits): # g:multi graphのmatchin
     # エラーの起きるedgeの選択
     erasure_errors = lossqubits
 
-    print("erasure errors:",erasure_errors)
+    # print("erasure errors:",erasure_errors)
 
     # edgeにエラー属性を付加
     for e in g_matching.edges(keys=True):

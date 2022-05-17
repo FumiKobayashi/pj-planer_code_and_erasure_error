@@ -7,9 +7,9 @@ from time import time
 from func import planer_code_x_stabilisers, planer_code_x_logicals, num_decoding_failures
 
 
-plosses = np.linspace(0.001, 0.5, 5)
-num_trials = 2000
-Ls = range(12,24,4)                                                  # code distanceを指定するiteraterの作成
+plosses = np.linspace(0.001, 0.5, 10)
+num_trials = 5000    
+Ls = range(24,37,4)                                                  # code distanceを指定するiteraterの作成
 ps = np.linspace(0.001, 0.2, 10)                                      # 計算に用いる確率の列
 np.random.seed(2)
 
@@ -22,6 +22,7 @@ f.close()
 start = time()
 dict_log_errors_all_L = {}
 for ploss in plosses:
+    print("Simulating p_loss={}...".format(ploss))
     log_errors_all_L = []                                               # code distanceごとのエラー確率を格納するlistを格納するlist
     for L in Ls:
         print("Simulating L={}...".format(L))
