@@ -208,8 +208,7 @@ def draw_matching_graph(self, edge_labels=True, ax = None):
 #属性を検索する関数
 def find_specific_attribute_edge(G, attr, value):
     d = nx.get_edge_attributes(G, attr)
-    result = [key for key, v in d.items() if v==value]
-    return result
+    return  [key for key, v in d.items() if v==value]
 
 
 def find_specific_node_id(G, attr, id):
