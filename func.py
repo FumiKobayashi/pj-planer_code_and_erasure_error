@@ -207,11 +207,8 @@ def draw_matching_graph(self, edge_labels=True, ax = None):
 
 #属性を検索する関数
 def find_specific_attribute_edge(G, attr, value):
-    result = []
     d = nx.get_edge_attributes(G, attr)
-    for key, v in d.items():
-        if(v == value):
-            result.append(key)
+    result = [key for key, v in d.items() if v==value]
     return result
 
 
