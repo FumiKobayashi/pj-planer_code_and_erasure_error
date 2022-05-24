@@ -5,7 +5,12 @@ import random
 from pymatching import Matching
 import networkx as nx
 import copy
+
+# 高速化まわり
 import joblib
+import numba
+
+
 
 def planer_code_x_stabilisers(L):                               # planer codeのstabilizerを表す行列を生成
     row_ind = []
@@ -62,12 +67,16 @@ def planer_code_x_logicals(L):
 
 
 def num_decoding_failures(H,logicals, L, p_comp, num_trials, ploss=0.0, multi_thread=False):
-    num = np.array([i for i in range(L**2+(L-1)**2)])           # lossしたqubitを見つけるための数列
+    node_num = np.array([i for i in range(L**2+(L-1)**2)])           # lossしたqubitを見つけるための数列
     num_errors = 0                                              # エラーカウンターの設定
-    if multi_thread:                                           
+    if multi_thread:
+        print('p=',p_comp) 
+        result_list = joblib.Parallel(n_jobs=-1, verbose=3)([joblib.delayed(onestep)(H,logicals, L, p_comp, ploss, node_num) for i in range(num_trials)])
+        num_errors = sum(result_list)                                          
+    else:
         for i in range(num_trials):
             flag_loss = np.random.binomial(1, ploss, L**2+(L-1)**2)
-            lossqubits = num  * flag_loss
+            lossqubits = node_num  * flag_loss
             lossqubits = lossqubits[lossqubits.nonzero()]
             g_matching = multi_graph_generator(H, L)
 
@@ -78,20 +87,18 @@ def num_decoding_failures(H,logicals, L, p_comp, num_trials, ploss=0.0, multi_th
             matching = Matching(H, spacelike_weights=spacelike_weights) 
             noise = np.random.binomial(1, p_comp, H.shape[1])            # nioseの生成
             syndrome = H@noise % 2                                  # syndrome値の検出
-            correction = matching.decode(syndrome)                  # デコード結果の出力
+            correction = matching.decode(syndrome, num_neighbours=16)                  # デコード結果の出力
             error = (noise + correction) % 2                        # 訂正後の残留エラーの計算
             if np.any(error@logicals.T % 2):                        # 訂正の可否を確認
                 num_errors += 1
-    else:
-        result_list = joblib.Parallel(n_jobs=-2, verbose=2)([joblib.delayed(onestep)(H,logicals, L, p_comp, ploss, num) for ploss in num_trials] )
-        num_errors = sum(result_list)
     return num_errors
 
 # 上の関数の並列処理するパートのの関数
-def onestep(H,logicals, L, p_comp, ploss, num):
+
+def onestep(H,logicals, L, p_comp, ploss, node_num):
     num_errors = 0 
     flag_loss = np.random.binomial(1, ploss, L**2+(L-1)**2)
-    lossqubits = num  * flag_loss
+    lossqubits = node_num  * flag_loss
     lossqubits = lossqubits[lossqubits.nonzero()]
     g_matching = multi_graph_generator(H, L)
 
@@ -124,6 +131,7 @@ def spacelike_weight_generator(graph_matching, p, L, lossqubits=None):
             pn = (1-(1-2*p)**n)*0.5
             spacelike_weights.append(np.log((1-pn)/pn))
     return spacelike_weights
+
 
 
 def multi_graph_generator(H, L):
@@ -220,6 +228,7 @@ def find_specific_node_id(G, attr, id):
         print("find_specific_node_id could not find {0} on attribute {1}".format(id, attr))
     return result
 
+
 def erasure_error(g_matching, error_prob={"erasure":0.0}):
     # エラーが起きるedgeの乱択
     # 二項分布からエラーが起こるedgeの個数を選択
@@ -235,13 +244,15 @@ def erasure_error(g_matching, error_prob={"erasure":0.0}):
     for id in erasure_errors:
         temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
         erasure_edges.extend(temp)
-    for e in erasure_edges:
-        pass     
+    # for e in erasure_edges:
+    #     pass     
         
     return g_matching
 
 
 " matchingグラフのedgeに対する\"ダブり\"の数カウントを返す関数"
+
+
 def add_degrade_attribute(g_matching, graph_degraded_matching, L, lossqubits):
     dict_loss_degraded_edges = get_edge_number(Erasured_matching_graph_creater(graph_degraded_matching, L, lossqubits), L)
     lossedges = []
@@ -261,6 +272,8 @@ def add_degrade_attribute(g_matching, graph_degraded_matching, L, lossqubits):
 
 
 #  以下は上の関数のための関数
+
+
 def Erasured_matching_graph_creater(g, L, lossqubits): # g:multi graphのmatching_graph
     g_matching = copy.deepcopy(g)
 
@@ -304,6 +317,7 @@ def Erasured_matching_graph_creater(g, L, lossqubits): # g:multi graphのmatchin
             g_matching.remove_node(node_id1)
     
     return  g_matching
+
 
 
 def get_edge_number(g_matching, L):
