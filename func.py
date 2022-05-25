@@ -118,8 +118,8 @@ def onestep(H,logicals, L, p_comp, ploss, node_num):
 
 
 def spacelike_weight_generator(graph_matching, p, L, lossqubits=None):
-    graph_degraded_matching =  Erasured_matching_graph_creater(graph_matching, L,lossqubits)
-    graph_matching = add_degrade_attribute(graph_matching, graph_degraded_matching, L, lossqubits)
+    dict_loss_degraded_edges = get_edge_number(Erasured_matching_graph_creater(graph_matching, L,lossqubits), L)
+    graph_matching = add_degrade_attribute(graph_matching, dict_loss_degraded_edges, lossqubits)
     spacelike_weights = []
     for i in range(L**2+(L-1)**2):
         edges = find_specific_attribute_edge(graph_matching, 'fault_ids', {i})
@@ -210,10 +210,8 @@ def erasure_error(g_matching, error_prob={"erasure":0.0}):
     # エラーが起きるedgeの乱択
     # 二項分布からエラーが起こるedgeの個数を選択
     num_eerrer = np.random.binomial(g_matching.number_of_edges(), error_prob["erasure"], 1)
-
     # エラーの起きるedgeの選択
     erasure_errors = random.sample([i for i in range(g_matching.number_of_edges())], k=num_eerrer[0])
-
     # edegeにエラー属性を付加
     for e in g_matching.edges():
         g_matching.edges[e]['erasure'] = False
@@ -221,17 +219,13 @@ def erasure_error(g_matching, error_prob={"erasure":0.0}):
     for id in erasure_errors:
         temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
         erasure_edges.extend(temp)
-    # for e in erasure_edges:
-    #     pass     
-        
     return g_matching
 
 
 " matchingグラフのedgeに対する\"ダブり\"の数カウントを返す関数"
 
 
-def add_degrade_attribute(g_matching, graph_degraded_matching, L, lossqubits):
-    dict_loss_degraded_edges = get_edge_number(Erasured_matching_graph_creater(graph_degraded_matching, L, lossqubits), L)
+def add_degrade_attribute(g_matching, dict_loss_degraded_edges, lossqubits):
     lossedges = []
     for i in lossqubits:
         temp = find_specific_attribute_edge(g_matching, 'fault_ids', {i})
@@ -244,7 +238,6 @@ def add_degrade_attribute(g_matching, graph_degraded_matching, L, lossqubits):
             g_matching.edges[e]['n'] = dict_loss_degraded_edges[e]
         else:
             g_matching.edges[e]['n'] = 1
-
     return g_matching
 
 
