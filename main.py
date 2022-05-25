@@ -30,6 +30,7 @@ np.random.seed(2)
 
 # dict_config = {'plosses':plosses, 'Ls':Ls, 'ps':ps, "num_trials":num_trials}
 dict_config = {'plosses':plosses, 'Ls':Ls, 'ps':list(ps1).extend(list(ps2)), "num_trials":num_trials}
+# dict_config = {'plosses':plosses, 'Ls':Ls, 'ploss_th':ploss_th , 'ps1':list(ps1), 'ps2':list(ps2), "num_trials":num_trials}
 output_dict_name = './{}/'.format(day)
 os.mkdir("./"+output_dict_name)
 f = open(output_dict_name+'config.pickle', 'wb')

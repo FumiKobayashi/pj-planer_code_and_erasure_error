@@ -22,7 +22,7 @@ day = now.strftime('%Y-%m-%d-%H%M')
 os.mkdir("./fig_{0}".format(day))
 
 num_trials = dict_config['num_trials']
-Ls = dict_config['Ls']            # code distanceを指定するiteraterの作成
+Ls = dict_config['Ls']              # code distanceを指定するiteraterの作成
 ps = dict_config['ps'] 
 
 for key in dict_log_errors_all_L.keys():

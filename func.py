@@ -186,25 +186,6 @@ def draw_matching_graph(self, edge_labels=True, ax = None):
     plt.axis('equal')
     #=======================================
 
-
-# def contenious_loss_detecter(lossqubits, L, g_matching):
-#     superweight_qubits = []
-#     already = []
-#     n_dict = {}
-#     for lossqubit in lossqubits:
-#         if lossqubit < L**2:
-#             if (lossqubit+1 in lossqubits) and (not (lossqubit+1 in already)):
-#                 already.append(lossqubit+1)
-                
-#             else:
-#                 pass
-#         elif lossqubit > (L**2-1):
-#             """ ここ作る """
-#             pass
-#         else:
-#             print("There is some error in the contenious_loss_detecter.")
-
-
 #属性を検索する関数
 def find_specific_attribute_edge(G, attr, value):
     d = nx.get_edge_attributes(G, attr)
@@ -315,7 +296,6 @@ def Erasured_matching_graph_creater(g, L, lossqubits): # g:multi graphのmatchin
     return  g_matching
 
 
-
 def get_edge_number(g_matching, L):
     multi_loss_edges = {}
     for n in g_matching.nodes():
@@ -324,9 +304,6 @@ def get_edge_number(g_matching, L):
             if l >1:
                 for node0 in g_matching.nodes[n]['node_ids']:
                     for node1 in g_matching.nodes[m]['node_ids']:
-                        # if node0<node1:
-                            multi_loss_edges[(node0, node1,0)]=l
-                        # else:
-                        #     pass
+                            multi_loss_edges[(node0, node1, 0)]=l
     return multi_loss_edges
 #########################################
