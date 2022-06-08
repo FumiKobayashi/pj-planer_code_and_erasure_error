@@ -17,30 +17,37 @@ day = now.strftime('%Y-%m-%d-%H%M')
 # configの設定
 plosses = np.linspace(0.0, 0.3, 5)                           # 線形で値を決めるとき
 plosses = np.hstack((plosses, np.linspace(0.35, 0.5, 7)))      # 0.5付近だけ細かく調べる
-num_trials = 5000
+num_trials = 1000
 Ls = range(24,37,4)                                                 # code distanceを指定するiteraterの作成
 # Ls = range(8,21,4)
  
-ploss_th = 0.35 # 計算エラーの刻みを変える閾値の指定   
-ps1 = np.linspace(0.001, 0.2, 10)                                      # 計算に用いる確率の列1
-ps2 = np.logspace(-3, -0.3010299956639812, 10, base=10)                                     # 計算に用いる確率の列2
+ploss_th = 0.36 # 計算エラーの刻みを変える閾値の指定   
+ps1 = np.linspace(0.07, 0.2, 10)                                      # 計算に用いる確率の列1
+ps2 = np.logspace(-4, -1, 10, base=10)                # 計算に用いる確率の列2
 
 
 np.random.seed(2)
 
 # dict_config = {'plosses':plosses, 'Ls':Ls, 'ps':ps, "num_trials":num_trials}
-dict_config = {'plosses':plosses, 'Ls':Ls, 'ps':list(ps1).extend(list(ps2)), "num_trials":num_trials}
-# dict_config = {'plosses':plosses, 'Ls':Ls, 'ploss_th':ploss_th , 'ps1':list(ps1), 'ps2':list(ps2), "num_trials":num_trials}
+dict_config = {'plosses':plosses, 'Ls':Ls, 'ploss_th':ploss_th , 'ps1':ps1, 'ps2':ps2, "num_trials":num_trials}
 output_dict_name = './{}/'.format(day)
 os.mkdir("./"+output_dict_name)
 f = open(output_dict_name+'config.pickle', 'wb')
 pickle.dump(dict_config, f)
 f.close()
 
+config_txt =''
+for key in dict_config.keys():
+    config_txt += '{0}:\t\t{1}\n'.format(key, dict_config[key])
+
+f = open(output_dict_name+'config.txt', 'x')
+f.write(config_txt)
+f.close()
+
 start = time()
 dict_log_errors_all_L = {}
 for ploss in plosses:
-    if ploss >ploss_th:
+    if ploss < ploss_th:
         ps = ps1
     else:
         ps = ps2

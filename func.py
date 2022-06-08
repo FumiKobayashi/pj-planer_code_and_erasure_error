@@ -8,7 +8,6 @@ import copy
 
 # 高速化まわり
 import joblib
-import numba
 
 
 
@@ -118,7 +117,7 @@ def onestep(H,logicals, L, p_comp, ploss, node_num):
 
 
 def spacelike_weight_generator(graph_matching, p, L, lossqubits=None):
-    dict_loss_degraded_edges = get_edge_number(Erasured_matching_graph_creater(graph_matching, L,lossqubits), L)
+    dict_loss_degraded_edges = get_edge_numbers(Erasured_matching_graph_creater(graph_matching, L,lossqubits))
     graph_matching = add_degrade_attribute(graph_matching, dict_loss_degraded_edges, lossqubits)
     spacelike_weights = []
     for i in range(L**2+(L-1)**2):
@@ -238,19 +237,15 @@ def add_degrade_attribute(g_matching, dict_loss_degraded_edges, lossqubits):
             g_matching.edges[e]['n'] = dict_loss_degraded_edges[e]
         else:
             g_matching.edges[e]['n'] = 1
+
     return g_matching
 
 
 #  以下は上の関数のための関数
 
 
-def Erasured_matching_graph_creater(g, L, lossqubits): # g:multi graphのmatching_graph
+def Erasured_matching_graph_creater(g, L, erasure_errors): # g:multi graphのmatching_graph
     g_matching = copy.deepcopy(g)
-
-    # エラーの起きるedgeの選択
-    erasure_errors = lossqubits
-
-    # print("erasure errors:",erasure_errors)
 
     # edgeにエラー属性を付加
     for e in g_matching.edges(keys=True):
@@ -262,8 +257,6 @@ def Erasured_matching_graph_creater(g, L, lossqubits): # g:multi graphのmatchin
     for id in erasure_errors:
         temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
         erasure_edges.extend(temp)
-
-    # print("erasure_edges",erasure_edges)
 
     # 消失したedgeに関するnodeを統合
     for e0 in erasure_edges:
@@ -285,11 +278,11 @@ def Erasured_matching_graph_creater(g, L, lossqubits): # g:multi graphのmatchin
                 if node_id0!=e1[1]:
                     g_matching.add_edge(node_id0, e1[1], **g_matching.edges[e1])
             g_matching.remove_node(node_id1)
-    
+
     return  g_matching
 
 
-def get_edge_number(g_matching, L):
+def get_edge_numbers(g_matching):
     multi_loss_edges = {}
     for n in g_matching.nodes():
         for m in g_matching.nodes():
@@ -298,5 +291,6 @@ def get_edge_number(g_matching, L):
                 for node0 in g_matching.nodes[n]['node_ids']:
                     for node1 in g_matching.nodes[m]['node_ids']:
                             multi_loss_edges[(node0, node1, 0)]=l
+
     return multi_loss_edges
 #########################################

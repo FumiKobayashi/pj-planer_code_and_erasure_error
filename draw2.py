@@ -1,5 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
 import pickle
 import datetime
 
@@ -45,9 +46,15 @@ os.mkdir(input_dir_name+"/fig_{0}".format(day))
 
 num_trials = dict_config['num_trials']
 Ls = dict_config['Ls']            # code distanceを指定するiteraterの作成
-ps = dict_config['ps'] 
+print('ps: ', dict_config)
+ps1 = dict_config['ps1']
+ps2 = dict_config['ps2']
 
 for key in dict_log_errors_all_L.keys():
+    if key < 0.35:
+        ps = ps1
+    else:
+        ps = ps2
     log_errors_all_L = dict_log_errors_all_L[key]
     plt.figure()
     for L, logical_errors in zip(Ls, log_errors_all_L):
@@ -55,6 +62,7 @@ for key in dict_log_errors_all_L.keys():
         plt.errorbar(ps, logical_errors, yerr=std_err, label="L={}".format(L))
     plt.xlabel("Physical error rate")
     plt.ylabel("Logical error rate")
+    plt.xscale('log')
     plt.legend(loc=0);
     plt.savefig(input_dir_name+"/fig_{0}/{1}.png".format(day,key))
 
