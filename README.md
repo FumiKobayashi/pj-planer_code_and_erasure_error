@@ -1,1 +1,3 @@
 # pj-planer_code_and_erasure_error
+このプログラムはplaner codeにPauliエラーとerasureエラーが発生する時の訂正可能な閾値を計算するプログラムです。
+このプログラムはMITライセンスのもとで公開しています。詳しくはLICENCE.txtを見てください。
