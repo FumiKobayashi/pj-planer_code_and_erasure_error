@@ -119,16 +119,16 @@ def onestep(H,logicals, L, p_comp, ploss, node_num):
 def spacelike_weight_generator(graph_matching, p, L, lossqubits=None):
     dict_loss_degraded_edges = get_edge_numbers(Erasured_matching_graph_creater(graph_matching, L,lossqubits))
     graph_matching = add_degrade_attribute(graph_matching, dict_loss_degraded_edges, lossqubits)
-    spacelike_weights = []
-    for i in range(L**2+(L-1)**2):
-        edges = find_specific_attribute_edge(graph_matching, 'fault_ids', {i})
-        e =(edges[0][0],edges[0][1],0)
+    spacelike_weights_dict = {}
+    for e in graph_matching.edges(keys = True):
         if graph_matching.edges[e]['n'] == 0:
-            spacelike_weights.append(np.log((1-1e-300)/1e-300))
+            spacelike_weights_dict[graph_matching.edges[e]['fault_id']] = np.log((1-1e-300)/1e-300)
         else: 
             n  = graph_matching.edges[e]['n']
             pn = (1-(1-2*p)**n)*0.5
-            spacelike_weights.append(np.log((1-pn)/pn))
+            spacelike_weights_dict[graph_matching.edges[e]['fault_id']]= np.log((1-pn)/pn)
+    spacelike_weights_sort = sorted(spacelike_weights_dict.items(), key=lambda i: i[0])
+    spacelike_weights = [item[1] for item in spacelike_weights_sort]
     return spacelike_weights
 
 
@@ -149,6 +149,8 @@ def multi_graph_generator(H, L):
             g.nodes[n]['pos'] = (i%L, y)
         else:
             g.nodes[n]['pos'] = ((L-1)/2, -2)
+    for e in g.edges():
+        g.edges[e]['fault_id'] = list(g.edges[e]['fault_ids'])[0]
     
     g_multi = nx.MultiGraph(g)
     return g_multi
@@ -204,46 +206,21 @@ def find_specific_node_id(G, attr, id):
         print("find_specific_node_id could not find {0} on attribute {1}".format(id, attr))
     return result
 
-
-def erasure_error(g_matching, error_prob={"erasure":0.0}):
-    # エラーが起きるedgeの乱択
-    # 二項分布からエラーが起こるedgeの個数を選択
-    num_eerrer = np.random.binomial(g_matching.number_of_edges(), error_prob["erasure"], 1)
-    # エラーの起きるedgeの選択
-    erasure_errors = random.sample([i for i in range(g_matching.number_of_edges())], k=num_eerrer[0])
-    # edegeにエラー属性を付加
-    for e in g_matching.edges():
-        g_matching.edges[e]['erasure'] = False
-    erasure_edges = []
-    for id in erasure_errors:
-        temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
-        erasure_edges.extend(temp)
-    return g_matching
-
-
 " matchingグラフのedgeに対する\"ダブり\"の数カウントを返す関数"
 
-
 def add_degrade_attribute(g_matching, dict_loss_degraded_edges, lossqubits):
-    lossedges = []
-    for i in lossqubits:
-        temp = find_specific_attribute_edge(g_matching, 'fault_ids', {i})
-        lossedges.extend(temp)
-    
+
     for e in g_matching.edges(keys=True):
-        if e in lossedges:
+        if g_matching.edges[e]['fault_id'] in lossqubits:
             g_matching.edges[e]['n'] = 0
-        elif e in dict_loss_degraded_edges.keys():
-            g_matching.edges[e]['n'] = dict_loss_degraded_edges[e]
+        elif g_matching.edges[e]['fault_id'] in dict_loss_degraded_edges.keys():
+            g_matching.edges[e]['n'] = dict_loss_degraded_edges[g_matching.edges[e]['fault_id']]
         else:
             g_matching.edges[e]['n'] = 1
 
     return g_matching
 
 
-#  以下は上の関数のための関数
-
-
 def Erasured_matching_graph_creater(g, L, erasure_errors): # g:multi graphのmatching_graph
     g_matching = copy.deepcopy(g)
 
@@ -252,84 +229,30 @@ def Erasured_matching_graph_creater(g, L, erasure_errors): # g:multi graphのmat
         g_matching.edges[e]['erasure'] = False
     for n in g_matching.nodes():
         g_matching.nodes[n]['node_ids'] = [n]
-
-    erasure_edges = []
+  
     for id in erasure_errors:
-        temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
-        erasure_edges.extend(temp)
-
-    # 消失したedgeに関するnodeを統合
-    for e0 in erasure_edges:
-        node_id0=find_specific_node_id(g_matching, 'node_ids', e0[0])
-        node_id1=find_specific_node_id(g_matching, 'node_ids', e0[1])
-        if node_id0 !=node_id1:
-            nodeset = {node_id0,node_id1}
-            if L**2-L in nodeset:
-                node_id0 = max(nodeset)
-                node_id1 = min(nodeset)
-            new_node_ids = g_matching.nodes[node_id0]['node_ids']
-            new_node_ids.extend(g_matching.nodes[node_id1]['node_ids'])
-            g_matching.nodes[node_id0]['node_ids'] = new_node_ids
-
-            new_pos = ((g_matching.nodes[node_id0]['pos'][0]+g_matching.nodes[node_id1]['pos'][0])/2, (g_matching.nodes[node_id0]['pos'][1]+g_matching.nodes[node_id1]['pos'][1])/2)
-            g_matching.nodes[node_id0]['pos'] = new_pos
-
-            for e1 in g_matching.edges(node_id1, keys=True):
-                if node_id0!=e1[1]:
-                    g_matching.add_edge(node_id0, e1[1], **g_matching.edges[e1])
-            g_matching.remove_node(node_id1)
+            l = find_specific_attribute_edge(g_matching, 'fault_id', id)
+            if len(l)>0:
+                e = l[0]
+                # 消失したedgeに関するnodeを統合 
+                node_id0= e[0]
+                node_id1= e[1]
+                nodeset = {node_id0,node_id1}
+                if L**2-L in nodeset:
+                    node_id0 = max(nodeset)
+                    node_id1 = min(nodeset)
+                new_pos = ((g_matching.nodes[node_id0]['pos'][0]+g_matching.nodes[node_id1]['pos'][0])/2, (g_matching.nodes[node_id0]['pos'][1]+g_matching.nodes[node_id1]['pos'][1])/2)
+                g_matching.nodes[node_id0]['pos'] = new_pos
+                
+                for e1 in g_matching.edges(node_id1, keys=True):
+                    if node_id0!=e1[1]:
+                        g_matching.add_edge(node_id0, e1[1], **g_matching.edges[e1])
+                g_matching.remove_node(node_id1)
+            else:
+                pass
 
     return  g_matching
-
 
 def get_edge_numbers(g_matching):
-    multi_loss_edges = {}
-    for n in g_matching.nodes():
-        for m in g_matching.nodes():
-            l = g_matching.number_of_edges(n, m)
-            if l >1:
-                for node0 in g_matching.nodes[n]['node_ids']:
-                    for node1 in g_matching.nodes[m]['node_ids']:
-                            multi_loss_edges[(node0, node1, 0)]=l
-
-    return multi_loss_edges
-
-
-
-def Erasured_matching_graph_creater(g, L, erasure_errors): # g:multi graphのmatching_graph
-    g_matching = copy.deepcopy(g)
-
-    # edgeにエラー属性を付加
-    for e in g_matching.edges(keys=True):
-        g_matching.edges[e]['erasure'] = False
-    for n in g_matching.nodes():
-        g_matching.nodes[n]['node_ids'] = [n]
-
-    erasure_edges = []
-    for id in erasure_errors:
-        temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
-        erasure_edges.extend(temp)
-
-    # 消失したedgeに関するnodeを統合
-    for e0 in erasure_edges:
-        node_id0=find_specific_node_id(g_matching, 'node_ids', e0[0])
-        node_id1=find_specific_node_id(g_matching, 'node_ids', e0[1])
-        if node_id0 !=node_id1:
-            nodeset = {node_id0,node_id1}
-            if L**2-L in nodeset:
-                node_id0 = max(nodeset)
-                node_id1 = min(nodeset)
-            new_node_ids = g_matching.nodes[node_id0]['node_ids']
-            new_node_ids.extend(g_matching.nodes[node_id1]['node_ids'])
-            g_matching.nodes[node_id0]['node_ids'] = new_node_ids
-
-            new_pos = ((g_matching.nodes[node_id0]['pos'][0]+g_matching.nodes[node_id1]['pos'][0])/2, (g_matching.nodes[node_id0]['pos'][1]+g_matching.nodes[node_id1]['pos'][1])/2)
-            g_matching.nodes[node_id0]['pos'] = new_pos
-
-            for e1 in g_matching.edges(node_id1, keys=True):
-                if node_id0!=e1[1]:
-                    g_matching.add_edge(node_id0, e1[1], **g_matching.edges[e1])
-            g_matching.remove_node(node_id1)
-
-    return  g_matching
+    return {g_matching.edges[e]['fault_id']: g_matching.number_of_edges(e[0], e[1]) for e in g_matching.edges(keys = True)}
 #########################################
