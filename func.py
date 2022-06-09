@@ -92,7 +92,7 @@ def num_decoding_failures(H,logicals, L, p_comp, num_trials, ploss=0.0, multi_th
                 num_errors += 1
     return num_errors
 
-# 上の関数の並列処理するパートのの関数
+# 上の関数の並列処理するパートの関数
 
 def onestep(H,logicals, L, p_comp, ploss, node_num):
     num_errors = 0 
@@ -293,4 +293,43 @@ def get_edge_numbers(g_matching):
                             multi_loss_edges[(node0, node1, 0)]=l
 
     return multi_loss_edges
+
+
+
+def Erasured_matching_graph_creater(g, L, erasure_errors): # g:multi graphのmatching_graph
+    g_matching = copy.deepcopy(g)
+
+    # edgeにエラー属性を付加
+    for e in g_matching.edges(keys=True):
+        g_matching.edges[e]['erasure'] = False
+    for n in g_matching.nodes():
+        g_matching.nodes[n]['node_ids'] = [n]
+
+    erasure_edges = []
+    for id in erasure_errors:
+        temp=find_specific_attribute_edge(g_matching, "fault_ids", {id})
+        erasure_edges.extend(temp)
+
+    # 消失したedgeに関するnodeを統合
+    for e0 in erasure_edges:
+        node_id0=find_specific_node_id(g_matching, 'node_ids', e0[0])
+        node_id1=find_specific_node_id(g_matching, 'node_ids', e0[1])
+        if node_id0 !=node_id1:
+            nodeset = {node_id0,node_id1}
+            if L**2-L in nodeset:
+                node_id0 = max(nodeset)
+                node_id1 = min(nodeset)
+            new_node_ids = g_matching.nodes[node_id0]['node_ids']
+            new_node_ids.extend(g_matching.nodes[node_id1]['node_ids'])
+            g_matching.nodes[node_id0]['node_ids'] = new_node_ids
+
+            new_pos = ((g_matching.nodes[node_id0]['pos'][0]+g_matching.nodes[node_id1]['pos'][0])/2, (g_matching.nodes[node_id0]['pos'][1]+g_matching.nodes[node_id1]['pos'][1])/2)
+            g_matching.nodes[node_id0]['pos'] = new_pos
+
+            for e1 in g_matching.edges(node_id1, keys=True):
+                if node_id0!=e1[1]:
+                    g_matching.add_edge(node_id0, e1[1], **g_matching.edges[e1])
+            g_matching.remove_node(node_id1)
+
+    return  g_matching
 #########################################
