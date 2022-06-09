@@ -193,19 +193,6 @@ def find_specific_attribute_edge(G, attr, value):
     return  [key for key, v in d.items() if v==value]
 
 
-def find_specific_node_id(G, attr, id):
-    result=None
-    d = nx.get_node_attributes(G, attr)
-    for key, v in  d.items():
-        if(id in v):
-            result=key
-            break
-        else:
-            pass
-    if result==None:
-        print("find_specific_node_id could not find {0} on attribute {1}".format(id, attr))
-    return result
-
 " matchingグラフのedgeに対する\"ダブり\"の数カウントを返す関数"
 
 def add_degrade_attribute(g_matching, dict_loss_degraded_edges, lossqubits):
